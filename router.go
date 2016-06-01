@@ -28,7 +28,11 @@ type Route struct {
 type Handler func(*Response, *Request)
 
 func NewRouter() *Router {
-	return new(Router)
+	return &Router{
+		defaultHandler: func (w *Response, r *Request) {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+		},
+	}
 }
 
 func (router *Router) HandleFunc(method, path string, handler Handler) {
@@ -74,9 +78,5 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if router.defaultHandler != nil {
-		router.defaultHandler(NewResponse(w), NewRequest(r))
-	} else {
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-	}
+	NewFilter(router.defaultHandler, router.filters).Handle(NewResponse(w), NewRequest(r))
 }
