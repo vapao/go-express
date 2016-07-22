@@ -1,82 +1,38 @@
 package express
 
 import (
-	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
 )
 
-var (
-	regMatcher *regexp.Regexp = regexp.MustCompile(`\{.+?\}`)
-	keyMatcher *regexp.Regexp = regexp.MustCompile(`\{(.+?)\}`)
-)
-
-type Router struct {
-	routes         []*Route
-	filters        []FilterFunction
-	defaultHandler Handler
+func NewRouter() Router {
+	return Router{}
 }
 
-type Route struct {
-	matcher *regexp.Regexp
-	handler Handler
-	method  string
-	keys    []string
+func (router *Router) AddModule(mde *Module) {
+	*router = append(*router, mde)
 }
 
-type Handler func(*Response, *Request)
-
-func NewRouter() *Router {
-	return &Router{
-		defaultHandler: func (w *Response, r *Request) {
-			http.Error(w, "404 Not Found", http.StatusNotFound)
-		},
+func (router Router) TopFilter(name string) {
+	if filter, ok := Filters[name]; ok {
+		TopFilter = append(TopFilter, filter)
+	} else {
+		panic("No such filter: " + name)
 	}
 }
 
-func (router *Router) HandleFunc(method, path string, handler Handler) {
-	method = strings.ToUpper(method)
-	switch method {
-	case http.MethodGet:
-	case http.MethodPut:
-	case http.MethodPost:
-	case http.MethodPatch:
-	case http.MethodHead:
-	case http.MethodDelete:
-	default:
-		panic("Invalid method: " + method)
-	}
-	route := &Route{
-		method:  method,
-		matcher: regexp.MustCompile(fmt.Sprintf("^%s$", regMatcher.ReplaceAllString(path, "([^/]+)"))),
-		handler: handler,
-	}
-	for _, v := range keyMatcher.FindAllStringSubmatch(path, -1) {
-		route.keys = append(route.keys, v[1])
-	}
-	router.routes = append(router.routes, route)
-}
-
-func (router *Router) DefaultHandle(handler Handler) {
-	router.defaultHandler = handler
-}
-
-func (router *Router) Filter(filter FilterFunction) {
-	router.filters = append(router.filters, filter)
-}
-
-func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for _, route := range router.routes {
-		if r.Method == route.method && route.matcher.MatchString(r.URL.Path) {
-			request := NewRequest(r)
-			tmp := route.matcher.FindAllStringSubmatch(r.URL.Path, -1)
-			for x, v := range route.keys {
-				request.PathParam[v] = tmp[0][x+1]
+func (router Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	for _, mde := range router {
+		for _, re := range mde.routes {
+			if re.method == r.Method && re.matcher.MatchString(r.URL.Path) {
+				request := NewRequest(r)
+				tmp := re.matcher.FindAllStringSubmatch(r.URL.Path, -1)
+				for x, v := range re.keys {
+					request.PathParam[v] = tmp[0][x+1]
+				}
+				newChannel(re.handler, mde.filters).Handle(NewResponse(w), request)
+				return
 			}
-			NewFilter(route.handler, router.filters).Handle(NewResponse(w), request)
-			return
 		}
 	}
-	NewFilter(router.defaultHandler, router.filters).Handle(NewResponse(w), NewRequest(r))
+	newChannel(defaultHandler, TopFilter).Handle(NewResponse(w), NewRequest(r))
 }

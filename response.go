@@ -2,25 +2,22 @@ package express
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
+	"path"
 )
-
-type Response struct {
-	http.ResponseWriter
-	locals     map[string]interface{}
-	StatusCode int
-}
 
 func NewResponse(w http.ResponseWriter) *Response {
 	return &Response{w, make(map[string]interface{}), http.StatusOK}
 }
 
-func (w *Response) SetLocals(key string, value interface{}) {
-	w.locals[key] = value
+func (w *Response) SetLocals(key string, value interface{}) *Response {
+	w.Locals[key] = value
+	return w
 }
 
 func (w Response) GetLocals(key string) interface{} {
-	return w.locals[key]
+	return w.Locals[key]
 }
 
 func (w *Response) Status(code int) *Response {
@@ -37,4 +34,16 @@ func (w *Response) Send(body string) {
 func (w *Response) Json(body string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprint(w, body)
+}
+
+func (w *Response) Render(fileNames ...string) error {
+	files := []string{}
+	for _, file := range fileNames {
+		files = append(files, path.Join(templateDir, file))
+	}
+	tpl, err := template.ParseFiles(files...)
+	if err != nil {
+		return err
+	}
+	return tpl.ExecuteTemplate(w, "Express", w.Locals)
 }
