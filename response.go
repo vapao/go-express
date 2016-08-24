@@ -43,6 +43,7 @@ func (w *Response) Render(fileNames ...string) error {
 	}
 	tpl, err := template.ParseFiles(files...)
 	if err != nil {
+		w.Send(err.Error())
 		return err
 	}
 	return tpl.ExecuteTemplate(w, "Express", w.Locals)
