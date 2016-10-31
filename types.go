@@ -5,24 +5,14 @@ import (
 	"regexp"
 )
 
-type Module struct {
-	routes  []*route
-	filters []*Filter
-}
-
-type Router []*Module
+type router []*Module
 
 type route struct {
+	tag      string
 	matcher *regexp.Regexp
 	handler Handler
 	method  string
 	keys    []string
-}
-
-type Channel struct {
-	filters []FilterFunc
-	index   int
-	target  func(*Response, *Request)
 }
 
 type Request struct {
@@ -38,10 +28,4 @@ type Response struct {
 
 type Handler func(*Response, *Request)
 
-type Filter struct {
-	filters []FilterFunc
-	Name    string
-	Desc    string
-}
 
-type FilterFunc func(*Response, *Request, *Channel)

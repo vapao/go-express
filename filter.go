@@ -1,55 +1,46 @@
 package express
 
 var (
-	Filters   = make(map[string]*Filter)
-	TopFilter []*Filter
+	globalFilters    = make(map[string]*filter)
+	topFilters []string
 )
 
-func newChannel(f func(*Response, *Request), filters []*Filter) *Channel {
-	channel := &Channel{
-		filters: []FilterFunc{},
-		target:  f,
-	}
-	for _, filter := range filters {
-		channel.filters = append(channel.filters, filter.filters...)
-	}
-	return channel
+type filter struct {
+	filter  FilterFunc
+	Name    string
+	Desc    string
+	Dependencies []string
 }
 
-func NewFilter(fun FilterFunc) *Filter {
-	return &Filter{
-		filters: []FilterFunc{fun},
-	}
-}
+type FilterFunc func(*Response, *Request, *Channel)
 
-func (f *Channel) Handle(w *Response, r *Request) {
-	if f.index < len(f.filters) {
-		f.index++
-		f.filters[f.index-1](w, r, f)
-	} else {
-		f.target(w, r)
+
+func NewFilter(fun FilterFunc) *filter {
+	return &filter{
+		filter: fun,
 	}
 }
 
-func (flt *Filter) Register(name string) *Filter {
-	if _, ok := Filters[name]; ok {
+func (flt *filter) Register(name string) *filter {
+	if _, ok := globalFilters[name]; ok {
 		panic("Already have filter for the " + name)
 	}
 	flt.Name = name
-	Filters[name] = flt
+	globalFilters[name] = flt
 	return flt
 }
 
-func (flt *Filter) Doc(str string) *Filter {
+func (flt *filter) Doc(str string) *filter {
 	flt.Desc = str
 	return flt
 }
 
-func (flt *Filter) Require(name string) *Filter {
-	if oflt, ok := Filters[name]; ok {
-		flt.filters = append(oflt.filters, flt.filters...)
-	} else {
-		panic("No such filter: " + name)
+func (flt *filter) Require(names ...string) *filter {
+	for _, name := range names {
+		if _, ok := globalFilters[name]; !ok {
+			panic("No such filter: " + name)
+		}
 	}
+	flt.Dependencies = names
 	return flt
 }

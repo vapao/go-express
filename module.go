@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+type Module struct {
+	routes  []*route
+	filters []string
+	filerMap map[string]struct{}
+}
+
 var (
 	regMatcher  = regexp.MustCompile(`\{.+?\}`)
 	keyMatcher  = regexp.MustCompile(`\{(.+?)\}`)
@@ -21,22 +27,33 @@ var (
 )
 
 func NewModule() *Module {
-	return &Module{
-		filters: TopFilter,
+	mde := &Module{
+		filerMap: make(map[string]struct{}),
 	}
+	mde.addFilter(topFilters...)
+	return mde
 }
 
-func (mde *Module) Filter(names ...string) {
+func (mde *Module) addFilter(names ...string) *Module {
 	for _, name := range names {
-		if filter, ok := Filters[name]; ok {
-			mde.filters = append(mde.filters, filter)
-		} else {
-			panic("No such filter: " + name)
+		if _, ok := mde.filerMap[name]; ok {
+			continue
 		}
+		mde.addFilter(globalFilters[name].Dependencies...)
+		mde.filerMap[name] = struct {}{}
+		mde.filters = append(mde.filters, name)
 	}
+	return mde
 }
 
-func (mde *Module) handle(method, path string, handler Handler) {
+func (mde *Module) Filter(name string) {
+	if _, ok := globalFilters[name]; !ok {
+		panic("No such filter: " + name)
+	}
+	mde.addFilter(name)
+}
+
+func (mde *Module) handle(method, path string, handler Handler) *route {
 	r := &route{
 		method:  strings.ToUpper(method),
 		matcher: regexp.MustCompile(fmt.Sprintf("^%s$", regMatcher.ReplaceAllString(path, "([^/]+)"))),
@@ -46,6 +63,7 @@ func (mde *Module) handle(method, path string, handler Handler) {
 		r.keys = append(r.keys, v[1])
 	}
 	mde.routes = append(mde.routes, r)
+	return r
 }
 
 func (mde *Module) HandleRegexFunc(method, path string, handler Handler) {
@@ -69,30 +87,34 @@ func (mde *Module) HandleRegexFunc(method, path string, handler Handler) {
 	mde.routes = append(mde.routes, r)
 }
 
-func (mde *Module) GET(path string, handler Handler) {
-	mde.handle("GET", path, handler)
+func (route *route) Tag(tag string) {
+	route.tag = tag
 }
 
-func (mde *Module) PUT(path string, handler Handler) {
-	mde.handle("PUT", path, handler)
+func (mde *Module) GET(path string, handler Handler) *route {
+	return mde.handle("GET", path, handler)
 }
 
-func (mde *Module) POST(path string, handler Handler) {
-	mde.handle("POST", path, handler)
+func (mde *Module) PUT(path string, handler Handler) *route {
+	return mde.handle("PUT", path, handler)
 }
 
-func (mde *Module) PATCH(path string, handler Handler) {
-	mde.handle("PATCH", path, handler)
+func (mde *Module) POST(path string, handler Handler) *route {
+	return mde.handle("POST", path, handler)
 }
 
-func (mde *Module) HEAD(path string, handler Handler) {
-	mde.handle("HEAD", path, handler)
+func (mde *Module) PATCH(path string, handler Handler) *route {
+	return mde.handle("PATCH", path, handler)
 }
 
-func (mde *Module) OPTION(path string, handler Handler) {
-	mde.handle("HEAD", path, handler)
+func (mde *Module) HEAD(path string, handler Handler) *route {
+	return mde.handle("HEAD", path, handler)
 }
 
-func (mde *Module) DELETE(path string, handler Handler) {
-	mde.handle("DELETE", path, handler)
+func (mde *Module) OPTION(path string, handler Handler) *route {
+	return mde.handle("HEAD", path, handler)
+}
+
+func (mde *Module) DELETE(path string, handler Handler) *route {
+	return mde.handle("DELETE", path, handler)
 }
