@@ -6,9 +6,12 @@ import (
 )
 
 var (
-	templateDir    string
-	defaultHandler = func(w *Response, r *Request) {
-		w.Status(404).Send("<h1>404 Not Found By go-express</h1>")
+	templateDir string
+	handle404 = func(w *Response, r *Request) {
+		w.Status(404).Send("404 Not Found by go-express")
+	}
+	handle405 = func(w *Response, r *Request) {
+		w.Status(405).Send("405 Method Not Allowed by go-express")
 	}
 )
 
@@ -33,5 +36,5 @@ func SetTemplateDir(dir string) {
 }
 
 func SetDefaultHandler(handler Handler) {
-	defaultHandler = handler
+	handle404 = handler
 }
