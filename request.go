@@ -1,9 +1,9 @@
 package express
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
-	"encoding/json"
 )
 
 func NewRequest(r *http.Request) *Request {

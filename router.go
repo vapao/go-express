@@ -21,6 +21,17 @@ func (r router) TopFilter(name string) {
 }
 
 func (r router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			if debugMode == false {
+				res := NewResponse(w)
+				res.Locals["panic"] = err
+				newChannel("500_page", handle500, topFilters).Handle(res, NewRequest(req))
+			} else {
+				panic(err)
+			}
+		}
+	}()
 	match := false
 	for _, mde := range r {
 		for _, re := range mde.routes {
@@ -30,7 +41,7 @@ func (r router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					request := NewRequest(req)
 					tmp := re.matcher.FindAllStringSubmatch(req.URL.Path, -1)
 					for x, v := range re.keys {
-						request.PathParam[v] = tmp[0][x + 1]
+						request.PathParam[v] = tmp[0][x+1]
 					}
 					newChannel(re.tag, re.handler, mde.filters).Handle(NewResponse(w), request)
 					return
@@ -45,6 +56,7 @@ func (r router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r router) ListenAndServe(addr string) {
-	http.ListenAndServe(addr, r)
+func (r router) ListenAndServe(addr string) error {
+	server := &http.Server{Addr: addr, Handler: r}
+	return server.ListenAndServe()
 }

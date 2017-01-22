@@ -1,19 +1,18 @@
 package express
 
 var (
-	globalFilters    = make(map[string]*filter)
-	topFilters []string
+	globalFilters = make(map[string]*filter)
+	topFilters    []string
 )
 
 type filter struct {
-	filter  FilterFunc
-	Name    string
-	Desc    string
+	filter       FilterFunc
+	Name         string
+	Desc         string
 	Dependencies []string
 }
 
 type FilterFunc func(*Response, *Request, *Channel)
-
 
 func NewFilter(fun FilterFunc) *filter {
 	return &filter{

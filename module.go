@@ -7,8 +7,8 @@ import (
 )
 
 type Module struct {
-	routes  []*route
-	filters []string
+	routes   []*route
+	filters  []string
 	filerMap map[string]struct{}
 }
 
@@ -40,7 +40,7 @@ func (mde *Module) addFilter(names ...string) *Module {
 			continue
 		}
 		mde.addFilter(globalFilters[name].Dependencies...)
-		mde.filerMap[name] = struct {}{}
+		mde.filerMap[name] = struct{}{}
 		mde.filters = append(mde.filters, name)
 	}
 	return mde

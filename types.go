@@ -8,7 +8,7 @@ import (
 type router []*Module
 
 type route struct {
-	tag      string
+	tag     string
 	matcher *regexp.Regexp
 	handler Handler
 	method  string
@@ -27,5 +27,3 @@ type Response struct {
 }
 
 type Handler func(*Response, *Request)
-
-
