@@ -3,6 +3,7 @@ package express
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 )
 
 var (
@@ -53,4 +54,15 @@ func Set404Handler(handler Handler) {
 
 func Set500Handler(handler Handler) {
 	handle500 = handler
+}
+
+func toHTTPError(err error) (msg string, httpStatus int) {
+	if os.IsNotExist(err) {
+		return "404 page not found", http.StatusNotFound
+	}
+	if os.IsPermission(err) {
+		return "403 Forbidden", http.StatusForbidden
+	}
+	// Default:
+	return "500 Internal Server Error", http.StatusInternalServerError
 }

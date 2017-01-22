@@ -5,6 +5,9 @@ import (
 	"html/template"
 	"net/http"
 	"path"
+	"os"
+	"io"
+	"strings"
 )
 
 func NewResponse(w http.ResponseWriter) *Response {
@@ -47,4 +50,20 @@ func (w *Response) Render(fileNames ...string) error {
 		return err
 	}
 	return tpl.ExecuteTemplate(w, "Express", w.Locals)
+}
+
+func (w *Response) SendFile(fileName string) {
+	fileName = path.Join(templateDir, fileName)
+	if strings.Contains(fileName, "..") {
+		http.Error(w, "http: invalid character in file path", 500)
+		return
+	}
+	f, err := os.Open(fileName)
+	if err != nil {
+		msg, code := toHTTPError(err)
+		http.Error(w, msg, code)
+		return
+	}
+	defer f.Close()
+	io.Copy(w, f)
 }
